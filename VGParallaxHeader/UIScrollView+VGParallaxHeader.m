@@ -51,7 +51,7 @@ static void *VGParallaxHeaderObserverContext = &VGParallaxHeaderObserverContext;
 - (void)setParallaxHeaderView:(UIView *)view
                          mode:(VGParallaxHeaderMode)mode
                        height:(CGFloat)height
-                  shadowBehaviour:(VGParallaxHeaderShadowBehaviour)shadowBehaviour
+              shadowBehaviour:(VGParallaxHeaderShadowBehaviour)shadowBehaviour
 {
     [self setParallaxHeaderView:view
                            mode:mode
@@ -62,6 +62,8 @@ static void *VGParallaxHeaderObserverContext = &VGParallaxHeaderObserverContext;
                          mode:(VGParallaxHeaderMode)mode
                        height:(CGFloat)height
 {
+    [self removeParallaxHeader];
+    
     // New VGParallaxHeader
     self.parallaxHeader = [[VGParallaxHeader alloc] initWithScrollView:self
                                                            contentView:view
@@ -175,6 +177,25 @@ static void *VGParallaxHeaderObserverContext = &VGParallaxHeaderObserverContext;
     objc_setAssociatedObject(self, &UIScrollViewVGParallaxHeader, parallaxHeader, OBJC_ASSOCIATION_ASSIGN);
 }
 
+- (void) removeParallaxHeader {
+    if (self.parallaxHeader) {
+        [self.parallaxHeader removeFromSuperview];
+        
+        if (self.parallaxHeader.isInsideTableView) {
+            [(UITableView*)self setTableHeaderView:nil];
+        }
+        else {
+            UIEdgeInsets selfContentInset = self.contentInset;
+            selfContentInset.top -= self.parallaxHeader.originalHeight;
+            
+            self.contentInset = selfContentInset;
+            self.contentOffset = CGPointMake(0, -selfContentInset.top);
+        }
+        
+        objc_setAssociatedObject(self, &UIScrollViewVGParallaxHeader, nil, OBJC_ASSOCIATION_ASSIGN);
+    }
+}
+
 - (VGParallaxHeader *)parallaxHeader
 {
     return objc_getAssociatedObject(self, &UIScrollViewVGParallaxHeader);
@@ -193,7 +214,7 @@ static void *VGParallaxHeaderObserverContext = &VGParallaxHeaderObserverContext;
     }
     
     // FIXME: Init with storyboards not yet supported
-
+    
     return self;
 }
 
@@ -239,7 +260,7 @@ static void *VGParallaxHeaderObserverContext = &VGParallaxHeaderObserverContext;
     _contentView.translatesAutoresizingMaskIntoConstraints = NO;
     
     [self.containerView addSubview:_contentView];
-
+    
     // Constraints
     [self setupContentViewMode];
 }
@@ -373,7 +394,8 @@ static void *VGParallaxHeaderObserverContext = &VGParallaxHeaderObserverContext;
     [self.contentView autoSetDimension:ALDimensionHeight
                                 toSize:self.originalHeight];
     
-    self.insetAwarePositionConstraint = [self.contentView autoAlignAxis:ALAxisHorizontal
+    ALAxis alignAxis = self.mode == VGParallaxHeaderModeNone ? ALAxisBaseline : ALAxisHorizontal;
+    self.insetAwarePositionConstraint = [self.contentView autoAlignAxis:alignAxis
                                                        toSameAxisOfView:self.containerView
                                                              withOffset:round(self.originalTopInset/2)];
 }
@@ -451,7 +473,7 @@ static void *VGParallaxHeaderObserverContext = &VGParallaxHeaderObserverContext;
             [self.stickyView removeConstraints:self.stickyViewContraints];
             [self.containerView removeConstraints:self.stickyViewContraints];
         }
-       
+        
         // Add Constraints
         self.stickyViewContraints = [self.stickyView autoPinEdgesToSuperviewEdgesWithInsets:UIEdgeInsetsMake(self.originalTopInset, 0, 0, 0)
                                                                               excludingEdge:nonStickyEdge];
